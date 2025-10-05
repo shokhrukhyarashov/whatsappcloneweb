@@ -1,4 +1,9 @@
+import 'package:archive/models/user_model.dart';
+import 'package:archive/routes_web_pages.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -33,6 +38,116 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
      });
    }
   }
+
+  signUpOrLogin(){
+    setState(() {
+      loadingOn=true;
+      errorInPwd=false;
+      errorInEmail=false;
+      errorInName=false;
+      errorPicture=false;
+    });
+    String nameInput=nameController.text.trim();
+    String emailInput=emailController.text.trim();
+    String pwdInput=pwdController.text.trim();
+
+    if(emailInput.isNotEmpty && emailInput.contains("@")){
+      if(pwdInput.isNotEmpty && pwdInput.length>=8) {
+        if (userWantToSignUp) {
+          if(nameInput.isNotEmpty && nameInput.length>=3){
+          signUpUserNow(nameInput, emailInput, pwdInput);
+          }else{
+            var snakbar = SnackBar(content: Text("Invalid Name please"),backgroundColor: DefaultColors.primaryColor);
+            ScaffoldMessenger.of(context).showSnackBar(snakbar,);
+          }
+
+        }else{
+          signInUserNow(emailInput, pwdInput);
+        }
+
+      }else{
+        var snakbar = SnackBar(content: Text("Invalid Password"),backgroundColor: DefaultColors.primaryColor);
+        ScaffoldMessenger.of(context).showSnackBar(snakbar,);
+      }
+
+    }else{
+      var snakbar = SnackBar(content: Text("Invalid Email"),backgroundColor: DefaultColors.primaryColor);
+      ScaffoldMessenger.of(context).showSnackBar(snakbar);
+
+      setState(() {
+        loadingOn=false;
+
+      });
+
+    }
+  }
+  void signInUserNow(String emailInput, String pwdInput) {
+    FirebaseAuth.instance.signInWithEmailAndPassword(email: emailInput, password: pwdInput)
+        .then((e){
+      setState(() {
+        loadingOn=false;
+      });
+      Navigator.pushReplacementNamed(context, RoutesForWebPages.homePage);
+    }).onError((error, stackTrace){
+    });
+  }
+
+  signUpUserNow(nameInput, emailInput, pwdInput)async{
+    final userCreate = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: emailInput,
+        password: pwdInput);
+    if(userCreate.user!=null){
+      var usermodel=UserModel(
+          uid: userCreate.user!.uid,
+          name: nameInput,
+          email: emailInput,
+          password: pwdInput);
+      uploadImageToStorage(usermodel);
+    }
+
+  }
+  void uploadImageToStorage(UserModel usermodel) {
+    if(selectedImage!=null){
+    // Reference imgeRef= FirebaseStorage.instance.ref("ProfileImages/${usermodel.uid}.jpg");
+    // UploadTask task = imgeRef.putData(selectedImage!);
+    // task.whenComplete(()async{
+    //  var urlImage= await task.snapshot.ref.getDownloadURL();
+    //  usermodel.image=urlImage;
+    //
+    //  //save data on firestore
+    //   await FirebaseAuth.instance.currentUser!.updatePhotoURL(usermodel.name);
+    //   await FirebaseAuth.instance.currentUser!.updatePhotoURL(urlImage);
+
+      // final userReference= await FirebaseFirestore.instance.collection('users');
+      // userReference
+      //     .doc(usermodel.uid)
+      //     .set(usermodel.toMap(),)
+      //     .then((value){
+      //       setState(() {
+      //         loadingOn=false;
+      //       });
+            Navigator.pushReplacementNamed(context, RoutesForWebPages.homePage);
+      // });
+
+    // });
+    }else{
+      var snakbar = SnackBar(content: Text("please choose image first"),backgroundColor: DefaultColors.primaryColor);
+      ScaffoldMessenger.of(context).showSnackBar(snakbar,);
+    }
+  }
+  formValidation(){
+
+      setState(() {
+        loadingOn=true;
+        errorInPwd=false;
+        errorInEmail=false;
+        errorInName=false;
+        errorPicture=false;
+      });
+
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,8 +248,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
                             ),
 
                           ),
-                          //email Filed
+                          //password Filed
                           TextField(
+                            obscureText: true,
                             keyboardType: TextInputType.text,
                             controller: pwdController,
                             decoration: InputDecoration(
@@ -163,7 +279,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
                                     backgroundColor: DefaultColors.primaryColor,
 
                                   ),
-                                  onPressed: (){},
+                                  onPressed: (){
+                                    signUpOrLogin();
+                                  },
                                   child: Padding(
                                       padding: EdgeInsets.symmetric(vertical: 8),
                                       child: loadingOn?
@@ -208,4 +326,8 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
         ),
     ));
   }
+
+
 }
+
+
